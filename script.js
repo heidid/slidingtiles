@@ -91,7 +91,7 @@ class RectangularBoard {
                 this.tiles[action.tileId].row += action.dy;
                 this.tiles[action.tileId].col += action.dx;
                 this.props.render();
-            }, 1000 * i);
+            }, 1000 * i); // TODO: find better way
         });
     }
     render() {
@@ -191,21 +191,16 @@ class Main {
             });
             return neighbors;
         }
-        // console.log(neighbors);
-        // this.board.tiles = neighbors[0][0];
-        // this.board.emptySpaces = neighbors[0][1];
-        // this.board.highlightStr(goalStr);
-        // this.render();
-        // const n = getNeighbors(this.board.tiles, this.board.emptySpaces);
+
         const queue = [];
         const visited = [];
         queue.push({ tiles: this.board.tiles, emptySpaces: this.board.emptySpaces, actions: [] });
         while (queue.length > 0) {
             const currentNode = queue.shift();
-            // console.log(currentNode.tiles);
             if (goalTest(currentNode.tiles)) {
                 console.log('DONE');
                 console.log(currentNode.actions);
+                this.board.emptySpaces = currentNode.emptySpaces;
                 return currentNode.actions;
             }
             if (visited.filter((visitedNode) => Util.arrayEquals(visitedNode.tiles, currentNode.tiles) && 
