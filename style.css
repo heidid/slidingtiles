@@ -1,47 +1,47 @@
 * {
-	margin: 0;
-	padding: 0;
-	border: 0;
-	outline: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    outline: none;
 }
 body {
-	font-family: sans-serif;
-	background: #c9eefb;
+    font-family: sans-serif;
+    background: #c9eefb;
 }
 form, input {
-	font-size: 24px;
-	padding: 8px 12px;
-	transition: 0.2s;
+    font-size: 24px;
+    padding: 8px 12px;
+    transition: 0.2s;
 }
 input {
-	border-radius: 5px;
+    border-radius: 5px;
 }
 input[type="text"] {
-	background: #fafafa;
-	border: 2px solid #fff;
-	box-shadow: 0 4px 0 #ccc, 0px 3px 0 #bbb inset;
+    background: #fafafa;
+    border: 2px solid #fff;
+    box-shadow: 0 4px 0 #ccc, 0px 3px 0 #bbb inset;
 }
 input[type="text"]:focus {
-	background: white;
-	box-shadow: 0 4px 0 #ccc, 0px 2px 0 #ccc inset;
+    background: white;
+    box-shadow: 0 4px 0 #ccc, 0px 2px 0 #ccc inset;
 }
 input[type="submit"] {
-	color: white;
-	background: steelblue;
-	box-shadow: 0 5px 0px #30638e;
+    color: white;
+    background: steelblue;
+    box-shadow: 0 5px 0px #30638e;
 }
 input[type="submit"]:hover {
-	background: #5896ca;
+    background: #5896ca;
 }
 #board-wrapper {
-	display: inline-block;
-	background: #eee;
-	margin: 50px 150px;
-	padding: 10px;
-	transform: rotateX(40deg) rotateY(0deg) rotateZ(-45deg) translateZ(0px);
-	border: 10px solid white;
-	box-shadow: 
-	-5px 5px 0px #ccc inset,
+    display: inline-block;
+    background: #eee;
+    margin: 50px 150px;
+    padding: 10px;
+    transform: rotateX(40deg) rotateY(0deg) rotateZ(-45deg) translateZ(0px);
+    border: 10px solid white;
+    box-shadow: 
+    -5px 5px 0px #ccc inset,
     -1px 1px 0px #aaa,
     -2px 2px 0px #aaa,
     -3px 3px 0px #aaa,
@@ -53,20 +53,20 @@ input[type="submit"]:hover {
     -9px 9px 0px #666;
 }
 .board {
-	position: relative;
+    position: relative;
 }
 .Tile {
-	position: absolute;
-	display: inline-block;
-	width: 44px;
-	height: 44px;
-	text-align: center;
-	line-height: 44px;
-	background: #CCCCFF;
-	margin: 3px;
-	border-radius: 5px;
-	transition: 0.5s;
-	box-shadow: 
+    position: absolute;
+    display: inline-block;
+    width: 44px;
+    height: 44px;
+    text-align: center;
+    line-height: 44px;
+    background: #CCCCFF;
+    margin: 3px;
+    border-radius: 5px;
+    transition: 0.5s;
+    box-shadow: 
     -1px 1px 0px mediumslateblue,
     -2px 2px 0px mediumslateblue,
     -3px 3px 0px mediumslateblue,
@@ -75,10 +75,10 @@ input[type="submit"]:hover {
     -6px 6px 0px slateblue;
 }
 .Tile.highlight {
-	background: #f5f5FF;
-	color: darkslateblue;
-	font-weight: 900;
-	box-shadow: 
+    background: #f5f5FF;
+    color: darkslateblue;
+    font-weight: 900;
+    box-shadow: 
     -15px 15px 10px rgba(100, 50, 150, 0.4),
     -1px 1px 0px mediumslateblue,
     -2px 2px 0px mediumslateblue,
