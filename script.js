@@ -6,6 +6,17 @@ const Util = {
     copyDeepArray: (arr) => {
         return arr.map((row) => [...row])
     },
+    createMatrix: (width, height) => {
+        const matrix = [];
+        for (let r = 0; r < height; r++) {
+            const row = [];
+            for (let c = 0; c < width; c++) {
+                row.push(null);
+            }
+            matrix.push(row);
+        }
+        return matrix;
+    },
     arrayEquals: (arr1, arr2) => {
         // https://stackoverflow.com/questions/27030/comparing-arrays-of-objects-in-javascript
         return JSON.stringify(arr1) === JSON.stringify(arr2);
@@ -27,7 +38,7 @@ const Util = {
         }
         return node;
     }
-}
+};
 
 
 class Tile {
@@ -61,7 +72,7 @@ class RectangularBoard {
         this.width = width;
         this.height = height;
         this.tiles = tiles;
-        this.emptySpaces = emptySpaces
+        this.emptySpaces = emptySpaces;
     }
     get styles() {
         const styles = {
@@ -121,6 +132,38 @@ class InputForm {
 }
 
 
+class Searcher {
+    constructor(startNode, goalTest, getNeighbors, checkVisited) {
+        this.startNode = startNode;
+        this.goalTest = goalTest;
+        this.getNeighbors = getNeighbors;
+        this.checkVisited = checkVisited;
+    }
+    bfs() {
+        const queue = [];
+        const visited = [];
+        queue.push(this.startNode);
+        while (queue.length > 0) {
+            const currentNode = queue.shift();
+            if (this.goalTest(currentNode.tiles)) {
+                return currentNode;
+            }
+            if (!this.checkVisited(currentNode, visited)) {
+                visited.push(currentNode);
+                const neighbors = this.getNeighbors(currentNode);
+                for (const neighbor of neighbors) {
+                    queue.push({ 
+                        tiles: neighbor.tiles, 
+                        emptySpaces: neighbor.emptySpaces,
+                        actions: currentNode.actions.concat([neighbor.action])
+                    });
+                }
+            }
+        }
+    }
+}
+
+
 class Main {
     constructor() {
         const rows = 3;
@@ -137,27 +180,11 @@ class Main {
         this.inputForm = new InputForm({ moveTiles: (goalStr) => this.startBfs(goalStr) });
     }
     startBfs(goalStr) {
-        const actions = this.bfs(goalStr);
-        console.log(actions);
-        this.board.doActions(actions);
-    }
-    bfs(goalStr) {
         const goalTest = (tiles) => {
-            console.log('goalTest');
-            console.log(tiles);
-
-            const tileArr = [];
-            for (let r = 0; r < this.board.height; r++) {
-                const row = [];
-                for (let c = 0; c < this.board.width; c++) {
-                    row.push(null);
-                }
-                tileArr.push(row);
-            }
+            const tileArr = Util.createMatrix(this.board.width, this.board.height);
             for (const tile of tiles) {
                 tileArr[tile.row][tile.col] = tile.symbol;
             }
-
             for (let i = 0; i < this.board.height; i++) {
                 const row = tileArr[i].join('');
                 if (row.indexOf(goalStr) != -1) {
@@ -166,7 +193,9 @@ class Main {
             }
             return false;
         };
-        const getNeighbors = (tiles, emptySpaces) => {
+        const getNeighbors = (node) => {
+            const tiles = node.tiles;
+            const emptySpaces = node.emptySpaces;
             const neighbors = [];
             emptySpaces.forEach((coords, i) => {
                 tiles.forEach((tile, j) => {
@@ -191,31 +220,19 @@ class Main {
             });
             return neighbors;
         }
-
-        const queue = [];
-        const visited = [];
-        queue.push({ tiles: this.board.tiles, emptySpaces: this.board.emptySpaces, actions: [] });
-        while (queue.length > 0) {
-            const currentNode = queue.shift();
-            if (goalTest(currentNode.tiles)) {
-                console.log('DONE');
-                console.log(currentNode.actions);
-                this.board.emptySpaces = currentNode.emptySpaces;
-                return currentNode.actions;
-            }
-            if (visited.filter((visitedNode) => Util.arrayEquals(visitedNode.tiles, currentNode.tiles) && 
-                Util.arrayEquals(visitedNode.emptySpaces, currentNode.emptySpaces)).length === 0) {
-                visited.push(currentNode);
-                const neighbors = getNeighbors(currentNode.tiles, currentNode.emptySpaces);
-                for (const neighbor of neighbors) {
-                    queue.push({ 
-                        tiles: neighbor.tiles, 
-                        emptySpaces: neighbor.emptySpaces,
-                        actions: currentNode.actions.concat([neighbor.action])
-                    });
-                }
-            }
+        const checkVisited = (node, visitedArr) => {
+            return visitedArr.filter((visitedNode) => Util.arrayEquals(visitedNode.tiles, node.tiles) && 
+                Util.arrayEquals(visitedNode.emptySpaces, node.emptySpaces)).length > 0;
         }
+        const startNode = {
+            tiles: Util.copyTileArray(this.board.tiles),
+            emptySpaces: Util.copyDeepArray(this.board.emptySpaces),
+            actions: []
+        };
+        const searcher = new Searcher(startNode, goalTest, getNeighbors, checkVisited);
+        const result = searcher.bfs();
+        this.board.emptySpaces = result.emptySpaces;
+        this.board.doActions(result.actions);
     }
     render() {
         Util.clearChildren(document.getElementById('stuff')).appendChild(this.inputForm.render());
