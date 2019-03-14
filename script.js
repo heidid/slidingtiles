@@ -33,6 +33,14 @@ const Util = {
         }
         return matrix
     },
+    printMatrix: (matrix) => {
+        for (let i = 0; i < matrix.length; i++) {
+            for (let j = 0; j < matrix[0].length; j++) {
+                if (!matrix[i][j]) matrix[i][j] = '_';
+            }
+        }
+        return matrix.map((row) => row.join('')).join('\n');
+    },
     manhattanDist: (a, b) => {
         return Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]);
     }
@@ -248,12 +256,14 @@ class Searcher {
         }
     }
     aStar() {
-        const pq = new PriorityQueue({ comparator: (a, b) => b[1] - a[1] });
+        const pq = new PriorityQueue({ comparator: (a, b) => a[1] - b[1] });
         const visited = [];
         pq.queue([this.startNode, this.heuristic(this.startNode)]);
         while (pq.length > 0) {
             const currentNode = pq.dequeue();
-            if (this.goalTest(currentNode[0].tiles)) {
+            // console.log(Util.printMatrix(Util.tileArrayToBasicMatrix(currentNode[0].tiles, 3, 3)));
+            if (this.heuristic(currentNode[0]) === 0) {
+                console.log('DONE');
                 return currentNode[0];
             }
             if (!this.checkVisited(currentNode[0], visited)) {
@@ -331,11 +341,10 @@ class Main {
                 })
             });
             return neighbors;
-        }
+        };
         const checkVisited = (node, visitedArr) => {
-            return visitedArr.filter((visitedNode) => Util.arrayEquals(visitedNode.tiles, node.tiles) && 
-                Util.arrayEquals(visitedNode.emptySpaces, node.emptySpaces)).length > 0;
-        }
+            return visitedArr.filter((visitedNode) => Util.arrayEquals(visitedNode.tiles, node.tiles)).length > 0;
+        };
         const startNode = {
             tiles: Util.copyTileArray(this.board.tiles),
             emptySpaces: Util.copyDeepArray(this.board.emptySpaces),
@@ -343,21 +352,41 @@ class Main {
         };
         const heuristic = (node) => {
             const currentState = Util.tileArrayToBasicMatrix(node.tiles, this.board.width, this.board.height);
-            const goalState = Util.createMatrix(this.board.width, this.board.height);
+            // const goalState = Util.tileArrayToBasicMatrix(node.tiles, this.board.width, this.board.height);
+            // const goalState = Util.createMatrix(this.board.width, this.board.height);
+            // for (let i = 0; i < goalStr.length; i++) {
+            //     goalState[0][i] = goalStr[i];
+            // }
+            // console.log(goalState);
+            // console.log(currentState);
+
             let totalDist = 0;
-            for (let r = 0; r < this.board.height; r++) {
-                for (let c = 0; c < this.board.width; c++) {
-                    const id = currentState[r][c];
-                    for (let i = 0; i < this.board.height; i++) {
-                        for (let j = 0; j < this.board.width; j++) {
-                            if (id === goalState[i][j]) { // each id only appears once
-                                totalDist += Util.manhattanDist([r, c], [i, j]);
-                            }
+            // for (let r = 0; r < this.board.height; r++) {
+            //     for (let c = 0; c < this.board.width; c++) {
+            //         for (let i = 0; i < this.board.height; i++) {
+            //             for (let j = 0; j < this.board.width; j++) {
+            //                 if (currentState[r][c] === goalState[i][j]) { // each id only appears once
+            //                     totalDist += Util.manhattanDist([r, c], [i, j]);
+            //                 }
+            //             }
+            //         }
+            //     }
+            // }
+            for (let i = 0; i < goalStr.length; i++) {
+                for (let r = 0; r < this.board.height; r++) {
+                    for (let c = 0; c < this.board.width; c++) {
+                        if (currentState[r][c] === goalStr[i]) {
+                            totalDist += Util.manhattanDist([r, c], [0, i]);
                         }
                     }
                 }
             }
-            console.log(totalDist);
+            // for (let i = 0; i < goalStr.length; i++) {
+            //     if (currentState[0][i] != goalStr[i]) {
+            //         return 1;
+            //     }
+            // }
+            // return 0;
             return totalDist;
         };
         const searcher = new Searcher(startNode, goalTest, getNeighbors, checkVisited, heuristic);
