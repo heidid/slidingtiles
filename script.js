@@ -23,14 +23,26 @@ const Util = {
     },
     formatInlineStyles: (styles) => {
         return Object.keys(styles).map(prop => `${prop}: ${styles[prop]};`).join(' ');
+    },
+    tileArrayToBasicMatrix: (tiles, width, height, useIndex) => {
+        const matrix = Util.createMatrix(width, height);
+        let i = 0;
+        for (const tile of tiles) {
+            matrix[tile.state.row][tile.state.col] = useIndex ? i : tile.state.symbol;
+            i++;
+        }
+        return matrix
+    },
+    manhattanDist: (a, b) => {
+        return Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]);
     }
 };
 
 
 class Component {
-    _el = null;
-    _state = {};
     constructor(tagName, className) {
+        this._el = null;
+        this._state = {};
         this.tagName = tagName;
         this.className = className;
     }
@@ -192,7 +204,7 @@ class InputForm extends Component {
     render() {
         const markup = `
             <label for="goalStr">Goal:</label>
-            <input type="text" name="goalStr" id="goalStr" autofocus>
+            <input type="text" name="goalStr" id="goalStr" maxLength="${this.props.maxLength}" autofocus>
             <input type="submit" value="Move Tiles">`;
         this.setInnerHTML(markup);
         return super.render();
@@ -201,11 +213,16 @@ class InputForm extends Component {
 
 
 class Searcher {
-    constructor(startNode, goalTest, getNeighbors, checkVisited) {
+    constructor(startNode, goalTest, getNeighbors, checkVisited, heuristic) {
         this.startNode = startNode;
         this.goalTest = goalTest;
         this.getNeighbors = getNeighbors;
         this.checkVisited = checkVisited;
+        this.heuristic = heuristic;
+    }
+    search() {
+        // return this.bfs();
+        return this.aStar();
     }
     bfs() {
         const queue = [];
@@ -230,13 +247,37 @@ class Searcher {
             }
         }
     }
+    aStar() {
+        const pq = new PriorityQueue({ comparator: (a, b) => b[1] - a[1] });
+        const visited = [];
+        pq.queue([this.startNode, this.heuristic(this.startNode)]);
+        while (pq.length > 0) {
+            const currentNode = pq.dequeue();
+            if (this.goalTest(currentNode[0].tiles)) {
+                return currentNode[0];
+            }
+            if (!this.checkVisited(currentNode[0], visited)) {
+                visited.push(currentNode[0]);
+                const neighbors = this.getNeighbors(currentNode[0]);
+                for (const neighbor of neighbors) {
+                    const costSoFar = currentNode[0].actions.length;
+                    const neighborNode = { 
+                        tiles: neighbor.tiles, 
+                        emptySpaces: neighbor.emptySpaces,
+                        actions: currentNode[0].actions.concat([neighbor.action])
+                    };
+                    pq.queue([neighborNode, costSoFar + this.heuristic(neighborNode)]);
+                }
+            }
+        }
+    }
 }
 
 
 class Main {
     constructor() {
-        const rows = 6;
-        const cols = 6;
+        const rows = 3;
+        const cols = 3;
         const tiles = [];
         for (let i = 0; i < rows; i++) {
             for (let j = 0; j < cols; j++) {
@@ -246,14 +287,14 @@ class Main {
         tiles.pop(); // so there's one empty space
 
         this.board = new RectangularBoard({ render: () => this.render() }, cols, rows, tiles, [[rows - 1, cols - 1]]);
-        this.inputForm = new InputForm({ moveTiles: (goalStr) => this.startBfs(goalStr) });
+        this.inputForm = new InputForm({ 
+            maxLength: this.board.width,
+            moveTiles: (goalStr) => this.startBfs(goalStr)
+        });
     }
     startBfs(goalStr) {
         const goalTest = (tiles) => {
-            const tileArr = Util.createMatrix(this.board.width, this.board.height);
-            for (const tile of tiles) {
-                tileArr[tile.state.row][tile.state.col] = tile.state.symbol;
-            }
+            const tileArr = Util.tileArrayToBasicMatrix(tiles, this.board.width, this.board.height);
             for (let i = 0; i < this.board.height; i++) {
                 const row = tileArr[i].join('');
                 if (row.indexOf(goalStr) != -1) {
@@ -300,9 +341,29 @@ class Main {
             emptySpaces: Util.copyDeepArray(this.board.emptySpaces),
             actions: []
         };
-        const searcher = new Searcher(startNode, goalTest, getNeighbors, checkVisited);
-        const result = searcher.bfs();
+        const heuristic = (node) => {
+            const currentState = Util.tileArrayToBasicMatrix(node.tiles, this.board.width, this.board.height);
+            const goalState = Util.createMatrix(this.board.width, this.board.height);
+            let totalDist = 0;
+            for (let r = 0; r < this.board.height; r++) {
+                for (let c = 0; c < this.board.width; c++) {
+                    const id = currentState[r][c];
+                    for (let i = 0; i < this.board.height; i++) {
+                        for (let j = 0; j < this.board.width; j++) {
+                            if (id === goalState[i][j]) { // each id only appears once
+                                totalDist += Util.manhattanDist([r, c], [i, j]);
+                            }
+                        }
+                    }
+                }
+            }
+            console.log(totalDist);
+            return totalDist;
+        };
+        const searcher = new Searcher(startNode, goalTest, getNeighbors, checkVisited, heuristic);
+        const result = searcher.search();
         this.board.emptySpaces = result.emptySpaces;
+        console.log(result.tiles);
         this.board.doActions(result.actions);
     }
     render() {
