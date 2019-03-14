@@ -1,7 +1,7 @@
 const Util = {
     ALPHABET: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''),
     copyTileArray: (tiles) => {
-        return tiles.map((tile) => new Tile(tile.row, tile.col, tile.symbol))
+        return tiles.map((tile) => new Tile(tile.state.row, tile.state.col, tile.state.symbol))
     },
     copyDeepArray: (arr) => {
         return arr.map((row) => [...row])
@@ -23,51 +23,111 @@ const Util = {
     },
     formatInlineStyles: (styles) => {
         return Object.keys(styles).map(prop => `${prop}: ${styles[prop]};`).join(' ');
-    },
-    createElement: (tagName, className, attributes) => {
-        const el = document.createElement(tagName);
-        el.classList.add(className);
-        Object.keys(attributes).forEach((key) => {
-            el.setAttribute(key, attributes[key]);
-        });
-        return el;
-    },
-    clearChildren: (node) => {
-        while (node.firstChild) {
-            node.removeChild(node.firstChild)
-        }
-        return node;
     }
 };
 
 
-class Tile {
-    HEIGHT = 50;
-    WIDTH = 50;
-    constructor(row, col, symbol) {
-        this.row = row;
-        this.col = col;
-        this.symbol = symbol;
-        this.highlight = false;
+class Component {
+    _el = null;
+    _state = {};
+    constructor(tagName, className) {
+        this.tagName = tagName;
+        this.className = className;
     }
-    get styles() {
-        const styles = {
-            'top': `${this.row * this.HEIGHT}px`,
-            'left': `${this.col * this.WIDTH}px`
-        };
-        return Util.formatInlineStyles(styles);
+    get attributes() { }
+    get eventHandlers() { }
+    get state() {
+        return this._state;
+    }
+    set state(newState) {
+        // console.log(newState);
+        const oldState = this._state;
+        Object.keys(newState).forEach((k) => {
+            this._state[k] = newState[k];
+        });
+        this.render();
+    }
+    setInnerHTML(htmlStr) {
+        this.innerHTML = htmlStr;
+    }
+    setChildren(nodesArr) {
+        this.childNodes = nodesArr;
     }
     render() {
-        const el = Util.createElement('div', Tile.name, { style: this.styles });
-        if (this.highlight) el.classList.add('highlight');
-        el.innerHTML = `${this.symbol}`;
-        return el;
+        // console.log('render');
+        if (!this._el) {
+            const el = document.createElement(this.tagName);
+            el.classList.add(this.className);
+            this._el = el;
+        }
+        if (this.attributes) {
+            Object.keys(this.attributes).forEach((key) => {
+                if (key === 'classList') {
+                    this._el.className = '';
+                    this._el.classList.add(this.className);
+                    this._el.classList.add(...this.attributes.classList);
+                } else {
+                    this._el.setAttribute(key, this.attributes[key]);
+                }
+            });
+        }
+        if (this.eventHandlers) {
+            Object.keys(this.eventHandlers).forEach((key) => {
+                this._el[key] = this.eventHandlers[key];
+            });
+        }
+        while (this._el.firstChild) { // TODO: do we always have to do this?
+            this._el.removeChild(this._el.firstChild)
+        }
+        if (this.innerHTML) {
+            this._el.innerHTML = this.innerHTML;
+        } else if (this.childNodes) {
+            this.childNodes.forEach((node) => this._el.appendChild(node));
+        }
+        return this._el;
     }
 }
 
 
-class RectangularBoard {
+class Tile extends Component {
+    HEIGHT = 50;
+    WIDTH = 50;
+    constructor(row, col, symbol) {
+        super('div', Tile.name);
+        this.state = {
+            row,
+            col,
+            symbol,
+            highlight: false
+        };
+    }
+    get styles() {
+        const styles = {
+            'top': `${this.state.row * this.HEIGHT}px`,
+            'left': `${this.state.col * this.WIDTH}px`
+        };
+        return Util.formatInlineStyles(styles);
+    }
+    get attributes() {
+        const attr = {
+            style: this.styles,
+            classList: []
+        };
+        if (this.state.highlight) {
+            attr.classList.push('highlight');
+        }
+        return attr;
+    }
+    render() {
+        this.setInnerHTML(`${this.state.symbol}`);
+        return super.render();
+    }
+}
+
+
+class RectangularBoard extends Component {
     constructor(props, width, height, tiles, emptySpaces) {
+        super('div', RectangularBoard.name);
         this.props = props;
         this.width = width;
         this.height = height;
@@ -81,10 +141,13 @@ class RectangularBoard {
         };
         return Util.formatInlineStyles(styles);
     }
+    get attributes() {
+        return { style: this.styles };
+    }
     highlightStr(str) {
-        this.tiles.forEach(tile => tile.highlight = false);
+        this.tiles.forEach(tile => tile.state.highlight = false);
         for (let i = 0; i < this.height; i++) {
-            const row = this.tiles.slice(i * this.width, i * this.width + this.width).map(tile => tile.symbol).join('');
+            const row = this.tiles.slice(i * this.width, i * this.width + this.width).map(tile => tile.state.symbol).join('');
             if (row.indexOf(str) != -1) {
                 // console.log(i);
                 for (let j = row.indexOf(str); j < row.indexOf(str) + str.length; j += this.tiles[i * this.width + j].symbol.length) {
@@ -99,35 +162,40 @@ class RectangularBoard {
         console.log('doing ' + actions.length + ' actions');
         actions.forEach((action, i) => {
             setTimeout(() => {
-                this.tiles[action.tileId].row += action.dy;
-                this.tiles[action.tileId].col += action.dx;
-                this.props.render();
+                this.tiles[action.tileId].state = {
+                    row: this.tiles[action.tileId].state.row + action.dy,
+                    col: this.tiles[action.tileId].state.col + action.dx
+                }
             }, 1000 * i); // TODO: find better way
         });
     }
     render() {
-        const el = Util.createElement('div', RectangularBoard.name, { style: this.styles })
-        el.classList.add('board');
-        el.innerHTML = this.tiles.map(tile => tile.render().outerHTML).join('\n');
-        return el;
+        this.setChildren(this.tiles.map(tile => tile.render()));
+        return super.render();
     }
 }
 
 
-class InputForm {
+class InputForm extends Component {
     constructor(props) {
+        super('form', InputForm.name);
         this.props = props;
     }
-    render() {
-        const form = Util.createElement('form', InputForm.name, {})
-        form.innerHTML = `<label for="goalStr">Goal:</label>
-            <input type="text" name="goalStr" id="goalStr">
-            <input type="submit" value="Move Tiles">`;
-        form.onsubmit = (e) => {
-            event.preventDefault();
-            this.props.moveTiles(form.goalStr.value);
+    get eventHandlers() {
+        return {
+            onsubmit: (event) => {
+                event.preventDefault();
+                this.props.moveTiles(event.target.goalStr.value.toUpperCase());
+            }
         };
-        return form;
+    }
+    render() {
+        const markup = `
+            <label for="goalStr">Goal:</label>
+            <input type="text" name="goalStr" id="goalStr" autofocus>
+            <input type="submit" value="Move Tiles">`;
+        this.setInnerHTML(markup);
+        return super.render();
     }
 }
 
@@ -152,6 +220,7 @@ class Searcher {
                 visited.push(currentNode);
                 const neighbors = this.getNeighbors(currentNode);
                 for (const neighbor of neighbors) {
+                    // console.log(neighbor.tiles);
                     queue.push({ 
                         tiles: neighbor.tiles, 
                         emptySpaces: neighbor.emptySpaces,
@@ -166,12 +235,12 @@ class Searcher {
 
 class Main {
     constructor() {
-        const rows = 3;
-        const cols = 3;
+        const rows = 6;
+        const cols = 6;
         const tiles = [];
         for (let i = 0; i < rows; i++) {
             for (let j = 0; j < cols; j++) {
-                tiles.push(new Tile(i, j, Util.ALPHABET[i * cols + j]))
+                tiles.push(new Tile(i, j, Util.ALPHABET[(i * cols + j) % 26]))
             }
         }
         tiles.pop(); // so there's one empty space
@@ -183,7 +252,7 @@ class Main {
         const goalTest = (tiles) => {
             const tileArr = Util.createMatrix(this.board.width, this.board.height);
             for (const tile of tiles) {
-                tileArr[tile.row][tile.col] = tile.symbol;
+                tileArr[tile.state.row][tile.state.col] = tile.state.symbol;
             }
             for (let i = 0; i < this.board.height; i++) {
                 const row = tileArr[i].join('');
@@ -199,20 +268,22 @@ class Main {
             const neighbors = [];
             emptySpaces.forEach((coords, i) => {
                 tiles.forEach((tile, j) => {
-                    if (Math.abs(coords[0] - tile.row) + Math.abs(coords[1] - tile.col) === 1) {
+                    if (Math.abs(coords[0] - tile.state.row) + Math.abs(coords[1] - tile.state.col) === 1) {
                         let newTiles = Util.copyTileArray(tiles);
-                        newTiles[j].row = coords[0];
-                        newTiles[j].col = coords[1];
+                        newTiles[j].state = {
+                            row: coords[0],
+                            col: coords[1]
+                        };
                         let newEmptySpaces = Util.copyDeepArray(emptySpaces);
-                        newEmptySpaces[i][0] = tile.row;
-                        newEmptySpaces[i][1] = tile.col;
+                        newEmptySpaces[i][0] = tile.state.row;
+                        newEmptySpaces[i][1] = tile.state.col;
                         neighbors.push({
                             tiles: newTiles,
                             emptySpaces: newEmptySpaces,
                             action: {
                                 tileId: j,
-                                dx: coords[1] - tile.col,
-                                dy: coords[0] - tile.row
+                                dx: coords[1] - tile.state.col,
+                                dy: coords[0] - tile.state.row
                             }
                         });
                     }
@@ -235,8 +306,8 @@ class Main {
         this.board.doActions(result.actions);
     }
     render() {
-        Util.clearChildren(document.getElementById('stuff')).appendChild(this.inputForm.render());
-        Util.clearChildren(document.getElementById('board-wrapper')).appendChild(this.board.render());
+        document.getElementById('stuff').appendChild(this.inputForm.render());
+        document.getElementById('board-wrapper').appendChild(this.board.render());
     }
 }
 
